@@ -1,0 +1,50 @@
+{
+  "mcpServers": {
+    "filesystem": {
+      "type": "stdio",
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-filesystem",
+        "/home/thc1006/oran-ric-platform"
+      ],
+      "env": {}
+    },
+    "github": {
+      "type": "stdio",
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-github"
+      ],
+      "env": {
+        "GITHUB_PERSONAL_ACCESS_TOKEN": "${GITHUB_TOKEN}"
+      }
+    },
+    "kubernetes": {
+      "type": "stdio",
+      "command": "/home/thc1006/.nvm/versions/node/v22.20.0/lib/node_modules/@strowk/mcp-k8s-linux-x64/bin/mcp-k8s-go",
+      "args": [],
+      "env": {
+        "KUBECONFIG": "/home/thc1006/.kube/config"
+      }
+    },
+    "docker": {
+      "type": "stdio",
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-docker"
+      ],
+      "env": {}
+    },
+    "playwright": {
+      "type": "stdio",
+      "command": "npx",
+      "args": [
+        "-y",
+        "playwright-mcp-server"
+      ],
+      "env": {}
+  }
+}

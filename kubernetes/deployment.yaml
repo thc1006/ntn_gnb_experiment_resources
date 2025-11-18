@@ -1,0 +1,396 @@
+# ====================================
+# 5G NTN Software Testbed - Kubernetes Deployment
+# ====================================
+# Complete Kubernetes deployment with services
+
+---
+# Namespace
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: ntn-testbed
+  labels:
+    name: ntn-testbed
+    app: 5g-ntn
+
+---
+# ConfigMap for testbed configuration
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: testbed-config
+  namespace: ntn-testbed
+data:
+  testbed_config.yaml: |
+    # Simplified configuration for K8s deployment
+    simulation:
+      duration: 10
+      gpu_enabled: auto
+      save_results: true
+      results_dir: /results
+
+    monitoring:
+      enable_prometheus: true
+      log_level: INFO
+
+---
+# Persistent Volume Claim for results
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: ntn-results-pvc
+  namespace: ntn-testbed
+spec:
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 10Gi
+  storageClassName: standard
+
+---
+# Deployment: Main Testbed
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ntn-testbed
+  namespace: ntn-testbed
+  labels:
+    app: ntn-testbed
+    component: simulator
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ntn-testbed
+      component: simulator
+
+  template:
+    metadata:
+      labels:
+        app: ntn-testbed
+        component: simulator
+
+    spec:
+      containers:
+      - name: testbed
+        image: ntn-testbed:latest
+        imagePullPolicy: IfNotPresent
+
+        # Resource requests and limits
+        resources:
+          requests:
+            cpu: "2"
+            memory: "4Gi"
+          limits:
+            cpu: "4"
+            memory: "8Gi"
+
+        # GPU support (uncomment if using GPU)
+        # resources:
+        #   limits:
+        #     nvidia.com/gpu: 1
+
+        # Environment variables
+        env:
+        - name: PYTHONUNBUFFERED
+          value: "1"
+        - name: LOG_LEVEL
+          value: "INFO"
+        - name: GPU_ENABLED
+          value: "auto"
+
+        # Volume mounts
+        volumeMounts:
+        - name: results
+          mountPath: /app/results
+        - name: logs
+          mountPath: /app/logs
+        - name: config
+          mountPath: /app/config
+          readOnly: true
+
+        # Ports
+        ports:
+        - name: rest-api
+          containerPort: 8000
+          protocol: TCP
+        - name: mcp-usrp
+          containerPort: 8001
+          protocol: TCP
+        - name: mcp-channel
+          containerPort: 8002
+          protocol: TCP
+
+        # Health checks
+        livenessProbe:
+          exec:
+            command:
+            - python
+            - -c
+            - "import simulators; print('OK')"
+          initialDelaySeconds: 30
+          periodSeconds: 30
+          timeoutSeconds: 10
+          failureThreshold: 3
+
+        readinessProbe:
+          exec:
+            command:
+            - python
+            - -c
+            - "import simulators; print('OK')"
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          timeoutSeconds: 5
+
+      # Volumes
+      volumes:
+      - name: results
+        persistentVolumeClaim:
+          claimName: ntn-results-pvc
+      - name: logs
+        emptyDir: {}
+      - name: config
+        configMap:
+          name: testbed-config
+
+      # Node selector (uncomment for GPU nodes)
+      # nodeSelector:
+      #   accelerator: nvidia-gpu
+
+      # Tolerations (for GPU taints)
+      # tolerations:
+      # - key: nvidia.com/gpu
+      #   operator: Exists
+      #   effect: NoSchedule
+
+---
+# Service: REST API
+apiVersion: v1
+kind: Service
+metadata:
+  name: ntn-testbed-api
+  namespace: ntn-testbed
+  labels:
+    app: ntn-testbed
+    component: api
+spec:
+  type: ClusterIP
+  selector:
+    app: ntn-testbed
+    component: simulator
+  ports:
+  - name: rest-api
+    port: 8000
+    targetPort: 8000
+    protocol: TCP
+  - name: mcp-usrp
+    port: 8001
+    targetPort: 8001
+    protocol: TCP
+  - name: mcp-channel
+    port: 8002
+    targetPort: 8002
+    protocol: TCP
+
+---
+# Service: Headless (for StatefulSet future use)
+apiVersion: v1
+kind: Service
+metadata:
+  name: ntn-testbed-headless
+  namespace: ntn-testbed
+spec:
+  type: ClusterIP
+  clusterIP: None
+  selector:
+    app: ntn-testbed
+    component: simulator
+  ports:
+  - name: rest-api
+    port: 8000
+    targetPort: 8000
+
+---
+# Deployment: Jupyter Notebook
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: jupyter
+  namespace: ntn-testbed
+  labels:
+    app: ntn-testbed
+    component: jupyter
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ntn-testbed
+      component: jupyter
+
+  template:
+    metadata:
+      labels:
+        app: ntn-testbed
+        component: jupyter
+
+    spec:
+      containers:
+      - name: jupyter
+        image: ntn-testbed:latest
+        imagePullPolicy: IfNotPresent
+
+        command: [
+          "jupyter", "lab",
+          "--ip=0.0.0.0",
+          "--port=8888",
+          "--no-browser",
+          "--allow-root",
+          "--NotebookApp.token=ntn-testbed-2024"
+        ]
+
+        resources:
+          requests:
+            cpu: "1"
+            memory: "2Gi"
+          limits:
+            cpu: "2"
+            memory: "4Gi"
+
+        env:
+        - name: JUPYTER_ENABLE_LAB
+          value: "yes"
+        - name: JUPYTER_TOKEN
+          value: "ntn-testbed-2024"
+
+        volumeMounts:
+        - name: results
+          mountPath: /app/results
+        - name: notebooks
+          mountPath: /app/notebooks
+
+        ports:
+        - name: jupyter
+          containerPort: 8888
+          protocol: TCP
+
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 8888
+          initialDelaySeconds: 30
+          periodSeconds: 30
+
+      volumes:
+      - name: results
+        persistentVolumeClaim:
+          claimName: ntn-results-pvc
+      - name: notebooks
+        emptyDir: {}
+
+---
+# Service: Jupyter
+apiVersion: v1
+kind: Service
+metadata:
+  name: jupyter
+  namespace: ntn-testbed
+  labels:
+    app: ntn-testbed
+    component: jupyter
+spec:
+  type: LoadBalancer  # Use NodePort for Kind
+  selector:
+    app: ntn-testbed
+    component: jupyter
+  ports:
+  - name: jupyter
+    port: 8888
+    targetPort: 8888
+    protocol: TCP
+    # nodePort: 30888  # Uncomment for NodePort
+
+---
+# HorizontalPodAutoscaler (optional)
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: ntn-testbed-hpa
+  namespace: ntn-testbed
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: ntn-testbed
+  minReplicas: 1
+  maxReplicas: 5
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: 80
+
+---
+# NetworkPolicy (optional security)
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: ntn-testbed-netpol
+  namespace: ntn-testbed
+spec:
+  podSelector:
+    matchLabels:
+      app: ntn-testbed
+  policyTypes:
+  - Ingress
+  - Egress
+  ingress:
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: ntn-testbed
+    ports:
+    - protocol: TCP
+      port: 8000
+    - protocol: TCP
+      port: 8001
+    - protocol: TCP
+      port: 8002
+    - protocol: TCP
+      port: 8888
+  egress:
+  - to:
+    - namespaceSelector: {}
+    ports:
+    - protocol: TCP
+      port: 53  # DNS
+    - protocol: UDP
+      port: 53  # DNS
+
+---
+# ServiceMonitor for Prometheus (if using Prometheus Operator)
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: ntn-testbed-metrics
+  namespace: ntn-testbed
+  labels:
+    app: ntn-testbed
+spec:
+  selector:
+    matchLabels:
+      app: ntn-testbed
+      component: api
+  endpoints:
+  - port: rest-api
+    path: /metrics
+    interval: 30s

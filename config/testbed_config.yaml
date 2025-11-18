@@ -1,0 +1,303 @@
+# ====================================
+# 5G NTN Testbed Configuration
+# ====================================
+# Central configuration for software simulation
+
+# ============ USRP Configuration ============
+usrp:
+  # Transmitter (X310 simulation)
+  tx:
+    device_type: "x310"
+    center_freq: 1.8e9      # 1.8 GHz (L-band n8)
+    sample_rate: 30.72e6    # 30.72 MHz (standard LTE/5G)
+    bandwidth: 30e6         # 30 MHz
+    tx_gain: 20             # dB
+    antenna: "TX/RX"
+
+  # Receiver (B210 simulation)
+  rx:
+    device_type: "b210"
+    center_freq: 1.8e9      # 1.8 GHz
+    sample_rate: 30.72e6    # 30.72 MHz
+    bandwidth: 30e6         # 30 MHz
+    rx_gain: 40             # dB
+    antenna: "RX2"
+
+  # Common parameters
+  common:
+    master_clock_rate: 184.32e6  # 184.32 MHz (6x sample rate)
+    time_source: "internal"       # "internal", "external", or "gpsdo"
+    clock_source: "internal"      # "internal", "external", or "gpsdo"
+
+# ============ Channel Emulator Configuration ============
+channel:
+  # Scenario selection: "geo", "leo", "meo", "haps"
+  scenario: "geo"
+
+  # GEO Satellite Parameters
+  geo:
+    altitude_km: 35786      # 35,786 km (geostationary orbit)
+    elevation_angle: 45     # degrees (45° typical for mid-latitude)
+    channel_model: "tdl_a"  # "tdl_a", "tdl_b", "tdl_c", "tdl_d", "tdl_e", "awgn"
+    doppler_enabled: true
+    doppler_shift_hz: 0     # ±15 Hz typical for GEO
+    rain_attenuation: true
+    atmospheric_loss: true
+    scintillation: false
+
+  # LEO Satellite Parameters
+  leo:
+    altitude_km: 600        # 600-1200 km
+    elevation_angle: 45     # degrees
+    channel_model: "tdl_d"  # Time-varying channel with Doppler
+    doppler_enabled: true
+    doppler_shift_hz: 0     # ±37.5 kHz max at 2 GHz
+    orbital_period_s: 5400  # 90 minutes
+    rain_attenuation: true
+    atmospheric_loss: true
+    scintillation: false
+
+  # MEO Satellite Parameters
+  meo:
+    altitude_km: 10000      # 8,000-20,000 km
+    elevation_angle: 45     # degrees
+    channel_model: "tdl_c"  # Moderate multipath
+    doppler_enabled: true
+    doppler_shift_hz: 0     # ±15 kHz typical
+    orbital_period_s: 21600 # 6 hours
+    rain_attenuation: true
+    atmospheric_loss: true
+    scintillation: false
+
+  # HAPS Parameters
+  haps:
+    altitude_km: 30         # 20-50 km
+    elevation_angle: 60     # degrees (high elevation for HAPS)
+    channel_model: "awgn"   # Minimal multipath at high elevation
+    doppler_enabled: false  # Negligible Doppler for HAPS
+    doppler_shift_hz: 0     # ±2 Hz max
+    rain_attenuation: true
+    atmospheric_loss: true
+    scintillation: false
+
+  # Advanced Channel Parameters
+  advanced:
+    multipath_enabled: true
+    max_doppler_rate_hz_s: 1000  # Hz/s (for LEO)
+    rain_rate_mm_hr: 5.0         # 5 mm/hr typical, 25+ heavy rain
+    atmospheric_water_vapor_density: 7.5  # g/m³ (ITU-R standard)
+    ionospheric_scintillation_index: 0.3  # S4 index (0-1)
+
+# ============ Simulation Configuration ============
+simulation:
+  # Runtime parameters
+  duration: 10              # seconds
+  update_rate_hz: 10        # Channel update rate for dynamic scenarios
+
+  # Performance options
+  gpu_enabled: "auto"       # "auto", true, false
+  parallel_processing: true
+  num_workers: 4            # CPU cores to use
+
+  # Signal generation
+  signal_type: "ofdm"       # "tone", "ofdm", "random"
+  ofdm_subcarriers: 1024
+  ofdm_cyclic_prefix: 72    # samples
+
+  # Output options
+  save_results: true
+  results_dir: "results"
+  save_plots: true
+  plot_format: "png"        # "png", "pdf", "svg"
+  save_iq_samples: false    # Warning: Large files!
+  iq_decimation: 100        # Save every Nth sample
+
+# ============ Link Budget Configuration ============
+link_budget:
+  # Frequency parameters
+  frequency_ghz: 1.8        # GHz
+
+  # TX parameters
+  tx_power_dbm: 33          # dBm (2W)
+  tx_antenna_gain_dbi: 15   # dBi
+  tx_cable_loss_db: 2       # dB
+  tx_eirp_dbm: 46           # tx_power + tx_gain - tx_loss
+
+  # RX parameters
+  rx_antenna_gain_dbi: 15   # dBi
+  rx_cable_loss_db: 2       # dB
+  rx_noise_figure_db: 5     # dB
+  rx_bandwidth_mhz: 30      # MHz
+
+  # Link parameters
+  required_snr_db: 10       # dB (for QPSK 1/2)
+  link_margin_db: 10        # dB (fade margin)
+  rain_margin_db: 5         # dB (rain attenuation margin)
+
+  # ITU-R Model Parameters
+  itu_r:
+    p676_version: 12        # Atmospheric attenuation model version
+    p838_version: 3         # Rain attenuation model version
+    p618_version: 13        # Propagation data model version
+    availability_target: 0.99  # 99% availability
+
+# ============ RF Safety Configuration ============
+rf_safety:
+  # Power density limits (IEEE C95.1-2019)
+  max_power_density_w_m2: 10        # W/m² (public exposure, 1.5-3 GHz)
+  max_field_strength_v_m: 61        # V/m (1.5 GHz)
+  safe_distance_m: 1.42             # Calculated at 2W EIRP, 15 dBi gain
+
+  # Compliance standards
+  standards:
+    - "IEEE C95.1-2019"
+    - "ICNIRP 2020"
+    - "FCC Part 1.1310"
+    - "3GPP TS 38.101"
+
+  # Warnings and alerts
+  enable_warnings: true
+  auto_shutdown_on_violation: false
+  warning_distance_m: 2.0
+
+# ============ Monitoring & Logging ============
+monitoring:
+  # Prometheus metrics
+  enable_prometheus: false
+  prometheus_port: 9090
+
+  # Logging configuration
+  log_level: "INFO"         # "DEBUG", "INFO", "WARNING", "ERROR"
+  log_to_file: true
+  log_file: "logs/ntn_testbed.log"
+  log_rotation: true
+  max_log_size_mb: 100
+
+  # Performance metrics
+  collect_metrics: true
+  metrics_interval_s: 1.0
+
+  # Metrics to collect
+  metrics:
+    - "tx_power_dbm"
+    - "rx_power_dbm"
+    - "snr_db"
+    - "ber"               # Bit error rate
+    - "per"               # Packet error rate
+    - "throughput_mbps"
+    - "latency_ms"
+    - "doppler_shift_hz"
+    - "path_loss_db"
+
+# ============ Test Scenarios ============
+test_scenarios:
+  # Quick validation test
+  quick_test:
+    enabled: true
+    duration: 1             # seconds
+    scenarios: ["geo", "haps"]
+
+  # Full test suite
+  full_test:
+    enabled: false
+    duration: 10            # seconds per scenario
+    scenarios: ["geo", "leo", "haps"]
+
+  # Performance benchmark
+  benchmark:
+    enabled: false
+    duration: 60            # seconds
+    scenarios: ["geo"]
+    measure_throughput: true
+    measure_latency: true
+
+# ============ Docker Configuration ============
+docker:
+  base_image: "python:3.11-slim"
+  gpu_base_image: "nvidia/cuda:12.2.0-runtime-ubuntu22.04"
+
+  # Container resources
+  cpu_limit: "4"
+  memory_limit: "8G"
+  gpu_enabled: false
+
+  # Volumes
+  volumes:
+    - "./results:/app/results"
+    - "./config:/app/config"
+    - "./logs:/app/logs"
+
+# ============ Kubernetes Configuration ============
+kubernetes:
+  namespace: "ntn-testbed"
+  replicas: 1
+
+  # Resource requests
+  resources:
+    requests:
+      cpu: "2"
+      memory: "4Gi"
+    limits:
+      cpu: "4"
+      memory: "8Gi"
+
+  # GPU resources (if available)
+  gpu:
+    enabled: false
+    count: 1
+    type: "nvidia.com/gpu"
+
+  # Storage
+  storage:
+    class: "standard"
+    size: "10Gi"
+
+# ============ Advanced Features ============
+advanced:
+  # MCP Server Configuration
+  mcp:
+    enabled: true
+    usrp_server_port: 8001
+    channel_server_port: 8002
+
+  # Jupyter Configuration
+  jupyter:
+    enabled: false
+    port: 8888
+    token: "ntn-testbed-2024"
+
+  # REST API
+  rest_api:
+    enabled: false
+    port: 8000
+    host: "0.0.0.0"
+
+  # WebSocket for real-time updates
+  websocket:
+    enabled: false
+    port: 8080
+
+# ============ Calibration Configuration ============
+calibration:
+  # Auto-calibration on startup
+  auto_calibrate: true
+
+  # Calibration procedures
+  procedures:
+    dc_offset: true
+    iq_imbalance: true
+    frequency_offset: true
+    power_calibration: true
+
+  # Calibration intervals
+  intervals:
+    dc_offset_s: 300        # 5 minutes
+    iq_imbalance_s: 1800    # 30 minutes
+    frequency_offset_s: 600 # 10 minutes
+
+# ============ Version Info ============
+version:
+  config_version: "2.0.0"
+  testbed_version: "2.0.0-software"
+  last_updated: "2024-11-18"
+  author: "5G NTN Research Team"

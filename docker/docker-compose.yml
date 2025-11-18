@@ -1,0 +1,207 @@
+# ====================================
+# 5G NTN Software Testbed - Docker Compose
+# ====================================
+# Complete stack with monitoring and notebooks
+
+version: "3.9"
+
+services:
+  # ============ Main Testbed Service ============
+  ntn-testbed:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+      target: final  # or 'gpu-final' for GPU support
+    image: ntn-testbed:latest
+    container_name: ntn-testbed
+    hostname: ntn-testbed
+
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          cpus: '4'
+          memory: 8G
+        reservations:
+          cpus: '2'
+          memory: 4G
+
+    # GPU support (uncomment if using GPU)
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: 1
+    #           capabilities: [gpu]
+
+    # Environment variables
+    environment:
+      - PYTHONUNBUFFERED=1
+      - LOG_LEVEL=INFO
+      - GPU_ENABLED=auto
+
+    # Volumes
+    volumes:
+      - ../results:/app/results
+      - ../logs:/app/logs
+      - ../config:/app/config:ro
+
+    # Ports
+    ports:
+      - "8000:8000"  # REST API (future)
+      - "8001:8001"  # MCP USRP server
+      - "8002:8002"  # MCP Channel server
+
+    # Command (default: run demo)
+    command: ["python", "simulators/demo_full_simulation.py"]
+
+    # Restart policy
+    restart: unless-stopped
+
+    # Health check
+    healthcheck:
+      test: ["CMD", "python", "-c", "import simulators; print('OK')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+    # Networks
+    networks:
+      - ntn-network
+
+  # ============ Jupyter Notebook Service ============
+  jupyter:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+      target: final
+    image: ntn-testbed:latest
+    container_name: ntn-jupyter
+    hostname: jupyter
+
+    environment:
+      - JUPYTER_ENABLE_LAB=yes
+      - JUPYTER_TOKEN=ntn-testbed-2024
+
+    volumes:
+      - ../results:/app/results
+      - ../logs:/app/logs
+      - ../config:/app/config
+      - ../notebooks:/app/notebooks  # For Jupyter notebooks
+
+    ports:
+      - "8888:8888"
+
+    command: [
+      "jupyter", "lab",
+      "--ip=0.0.0.0",
+      "--port=8888",
+      "--no-browser",
+      "--allow-root",
+      "--NotebookApp.token=ntn-testbed-2024"
+    ]
+
+    restart: unless-stopped
+
+    networks:
+      - ntn-network
+
+  # ============ Prometheus Monitoring ============
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: ntn-prometheus
+    hostname: prometheus
+
+    volumes:
+      - ../monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+
+    ports:
+      - "9090:9090"
+
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=7d'
+
+    restart: unless-stopped
+
+    networks:
+      - ntn-network
+
+  # ============ Grafana Dashboards ============
+  grafana:
+    image: grafana/grafana:latest
+    container_name: ntn-grafana
+    hostname: grafana
+
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=ntn-testbed-2024
+      - GF_INSTALL_PLUGINS=grafana-clock-panel
+
+    volumes:
+      - ../monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ../monitoring/grafana/datasources:/etc/grafana/provisioning/datasources:ro
+      - grafana-data:/var/lib/grafana
+
+    ports:
+      - "3000:3000"
+
+    depends_on:
+      - prometheus
+
+    restart: unless-stopped
+
+    networks:
+      - ntn-network
+
+# ============ Networks ============
+networks:
+  ntn-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.25.0.0/16
+
+# ============ Volumes ============
+volumes:
+  prometheus-data:
+    driver: local
+  grafana-data:
+    driver: local
+
+# ====================================
+# Usage Instructions
+# ====================================
+#
+# Start all services:
+#   docker-compose up -d
+#
+# Start only testbed:
+#   docker-compose up -d ntn-testbed
+#
+# View logs:
+#   docker-compose logs -f ntn-testbed
+#
+# Access services:
+#   - Testbed results: ./results/
+#   - Jupyter: http://localhost:8888 (token: ntn-testbed-2024)
+#   - Prometheus: http://localhost:9090
+#   - Grafana: http://localhost:3000 (admin/ntn-testbed-2024)
+#
+# Stop all services:
+#   docker-compose down
+#
+# Stop and remove volumes:
+#   docker-compose down -v
+#
+# GPU support:
+#   1. Uncomment GPU section in ntn-testbed service
+#   2. Change build target to 'gpu-final'
+#   3. Rebuild: docker-compose build
+#
+# Scale testbed instances:
+#   docker-compose up -d --scale ntn-testbed=3

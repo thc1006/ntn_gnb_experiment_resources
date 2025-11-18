@@ -1,0 +1,73 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+ENV/
+.venv
+pip-log.txt
+pip-delete-this-directory.txt
+.eggs/
+*.egg-info/
+dist/
+build/
+
+# Jupyter Notebook
+.ipynb_checkpoints/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Project specific
+results/
+logs/
+data/
+*.log
+*.json.bak
+calibrations.json
+metrics_export.json
+geo_delay_stats.json
+link_budget_*.json
+rf_loopback_results.json
+
+# USRP
+*.dat
+*.bin
+
+# Temporary files
+*.tmp
+*.temp
+tmp/
+temp/
+
+# Virtual Environment
+venv/
+env/
+ENV/
+.venv/
+
+# Test Results
+.pytest_cache/
+.coverage
+htmlcov/
+coverage.xml
+
+# Documentation
+docs/_build/
+docs/generated/
+
+# MacOS
+.DS_Store
+.AppleDouble
+.LSOverride

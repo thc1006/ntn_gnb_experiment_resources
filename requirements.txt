@@ -1,0 +1,102 @@
+# ====================================
+# 5G NTN Testbed - Python Dependencies
+# ====================================
+# Updated for Software-Only Simulation (No Hardware Required)
+
+# ============ CORE DEPENDENCIES ============
+
+# Numerical Computing (REQUIRED)
+numpy>=1.21.0
+scipy>=1.7.0
+
+# Plotting and Visualization (REQUIRED)
+matplotlib>=3.4.0
+
+# Configuration Management (REQUIRED)
+pyyaml>=5.4.0
+
+# ============ OPTIONAL: GPU ACCELERATION ============
+# Uncomment ONE of these for GPU support (10-100x speedup):
+# cupy-cuda12x>=11.0.0  # For CUDA 12.x (RTX 40-series, A100, H100)
+# cupy-cuda11x>=11.0.0  # For CUDA 11.x (RTX 30-series, V100, A40)
+#
+# Or install manually:
+#   pip install cupy-cuda12x  # CUDA 12
+#   pip install cupy-cuda11x  # CUDA 11
+#
+# GPU is OPTIONAL - simulation works perfectly on CPU
+
+# ============ COMMUNICATION & WEB ============
+
+# Async and Concurrency
+aiohttp>=3.8.0
+
+# Web Framework (for monitoring interface)
+flask>=2.0.0
+requests>=2.26.0
+
+# ============ DATA PROCESSING ============
+
+# Data Processing and Analysis
+pandas>=1.3.0
+
+# ============ HARDWARE INTERFACE (OPTIONAL - not needed for simulation) ============
+# These are ONLY needed if you have physical USRP hardware
+# For software simulation, these are NOT required
+
+# USRP Hardware Interface (OPTIONAL - hardware only)
+# uhd>=4.2.0
+
+# Instrument Control (OPTIONAL - hardware only)
+# pyvisa>=1.11.0
+# pyvisa-py>=0.5.0
+# pyserial>=3.5
+
+# ============ TESTING TOOLS ============
+
+# Testing Framework
+pytest>=7.0.0
+pytest-asyncio>=0.18.0
+pytest-benchmark>=3.4.0
+
+# ============ MONITORING ============
+
+# Monitoring and Logging
+prometheus-client>=0.12.0
+
+# ============ DEVELOPMENT TOOLS ============
+
+# Jupyter Notebooks
+jupyter>=1.0.0
+ipython>=7.0.0
+notebook>=6.4.0
+
+# Code Quality
+black>=21.0
+pylint>=2.12.0
+mypy>=0.950
+
+# Type Stubs
+types-PyYAML>=6.0.0
+types-requests>=2.28.0
+
+# ============ DOCKER/KUBERNETES (automatically handled) ============
+# These are included in Docker images, no need to install locally:
+# - docker
+# - kubernetes (kubectl)
+# - kind
+
+# ============ SUMMARY ============
+# For basic simulation (CPU-only):
+#   pip install -r requirements.txt
+#
+# For GPU acceleration:
+#   pip install -r requirements.txt
+#   pip install cupy-cuda12x  # or cupy-cuda11x
+#
+# For hardware interfacing (physical USRP):
+#   Uncomment uhd, pyvisa lines above
+#
+# Quick start:
+#   ./scripts/quick_start.sh --gpu  # with GPU
+#   ./scripts/quick_start.sh        # CPU only

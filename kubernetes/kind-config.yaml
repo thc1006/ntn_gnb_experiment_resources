@@ -1,0 +1,129 @@
+# ====================================
+# Kind Cluster Configuration for 5G NTN Testbed
+# ====================================
+# Configuration for local Kubernetes testing with GPU support
+
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+
+# Cluster name
+name: ntn-testbed
+
+# Networking configuration
+networking:
+  # API server endpoint
+  apiServerAddress: "127.0.0.1"
+  apiServerPort: 6443
+
+  # Pod subnet
+  podSubnet: "10.244.0.0/16"
+
+  # Service subnet
+  serviceSubnet: "10.96.0.0/16"
+
+  # Disable default CNI
+  disableDefaultCNI: false
+
+# Nodes configuration
+nodes:
+  # Control plane node
+  - role: control-plane
+    image: kindest/node:v1.28.0
+    kubeadmConfigPatches:
+    - |
+      kind: InitConfiguration
+      nodeRegistration:
+        kubeletExtraArgs:
+          node-labels: "ingress-ready=true"
+
+    # Port mappings for services
+    extraPortMappings:
+    # Jupyter
+    - containerPort: 30888
+      hostPort: 8888
+      protocol: TCP
+    # REST API
+    - containerPort: 30800
+      hostPort: 8000
+      protocol: TCP
+    # MCP USRP Server
+    - containerPort: 30801
+      hostPort: 8001
+      protocol: TCP
+    # MCP Channel Server
+    - containerPort: 30802
+      hostPort: 8002
+      protocol: TCP
+    # Prometheus
+    - containerPort: 30900
+      hostPort: 9090
+      protocol: TCP
+    # Grafana
+    - containerPort: 30300
+      hostPort: 3000
+      protocol: TCP
+
+  # Worker node 1
+  - role: worker
+    image: kindest/node:v1.28.0
+
+    # GPU support (if NVIDIA Docker runtime available)
+    # extraMounts:
+    # - hostPath: /dev/null
+    #   containerPath: /var/lib/kubelet/device-plugins/kubelet.sock
+
+    labels:
+      workload: simulation
+
+  # Worker node 2 (optional - for scaling)
+  - role: worker
+    image: kindest/node:v1.28.0
+    labels:
+      workload: simulation
+
+# Feature gates
+featureGates:
+  # Enable required features
+  "ServerSideApply": true
+  "ExpandPersistentVolumes": true
+
+# Runtime configuration
+kubeadmConfigPatches:
+- |
+  kind: ClusterConfiguration
+  apiServer:
+    extraArgs:
+      enable-admission-plugins: NodeRestriction,PodSecurityPolicy
+  controllerManager:
+    extraArgs:
+      bind-address: 0.0.0.0
+  scheduler:
+    extraArgs:
+      bind-address: 0.0.0.0
+
+# Container runtime
+containerdConfigPatches:
+- |-
+  [plugins."io.containerd.grpc.v1.cri".registry.mirrors."localhost:5000"]
+    endpoint = ["http://localhost:5000"]
+
+---
+# ====================================
+# GPU Support Configuration (NVIDIA)
+# ====================================
+# Uncomment if you have NVIDIA GPU and docker runtime installed
+#
+# nodes:
+#   - role: worker
+#     image: kindest/node:v1.28.0
+#     labels:
+#       accelerator: nvidia-gpu
+#     extraMounts:
+#     - hostPath: /usr/local/nvidia
+#       containerPath: /usr/local/nvidia
+#       readOnly: true
+#     - hostPath: /dev
+#       containerPath: /dev
+#
+# After cluster creation, install NVIDIA device plugin:
+#   kubectl apply -f https://raw.githubusercontent.com/NVIDIA/k8s-device-plugin/v0.14.0/nvidia-device-plugin.yml
