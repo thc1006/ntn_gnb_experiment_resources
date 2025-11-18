@@ -97,7 +97,7 @@ NTN_ITRI/
 - **No Hardware Required**: Complete USRP X310/B210 simulation
 - **No Channel Emulator**: Software-based GEO/LEO/HAPS channel models
 - **3GPP Compliant**: TDL-A/B/C/D/E channel models (38.811)
-- **GPU Accelerated**: CuPy support for 10-100x speedup (optional)
+- **GPU Accelerated**: CuPy support (optional, actual speedup depends on hardware)
 
 ### ✅ Realistic RF Effects
 - **Path Loss**: Free-space propagation loss (FSPL)
